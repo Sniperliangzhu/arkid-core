@@ -12,7 +12,9 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 import datetime
-
+from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED
+from saml2.sigver import get_xmlsec_binary
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from kombu import Exchange, Queue
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -54,6 +56,7 @@ INSTALLED_APPS = [
     'oauth2_provider',
     'infrastructure',
     'captcha',
+    'djangosaml2idp',
     # 'ldap.sql_backend',
 ]
 
@@ -229,8 +232,10 @@ REDIS_CONFIG = {
     'PASSWORD': None,
 }
 
-REDIS_URL = 'redis://{}:{}/{}'.format(REDIS_CONFIG['HOST'], REDIS_CONFIG['PORT'], REDIS_CONFIG['DB']) if REDIS_CONFIG['PASSWORD'] is None \
-        else 'redis://:{}@{}:{}/{}'.format(REDIS_CONFIG['PASSWORD'], REDIS_CONFIG['HOST'], REDIS_CONFIG['PORT'], REDIS_CONFIG['DB'])
+REDIS_URL = 'redis://{}:{}/{}'.format(REDIS_CONFIG['HOST'], REDIS_CONFIG['PORT'],\
+    REDIS_CONFIG['DB']) if REDIS_CONFIG['PASSWORD'] is None \
+        else 'redis://:{}@{}:{}/{}'.format(REDIS_CONFIG['PASSWORD'],\
+            REDIS_CONFIG['HOST'], REDIS_CONFIG['PORT'], REDIS_CONFIG['DB'])
 
 
 CACHES = {
@@ -315,3 +320,56 @@ if os.path.exists(os.path.join(BASE_DIR, 'settings_local.py')):
     exec(open(os.path.join(BASE_DIR, 'settings_local.py')).read())
 
 UPLOADFILES_PATH = BASE_DIR + '/upload/'
+
+# djangosaml2idp config
+LOGIN_URL = '/samllogin/'
+BASE_URL = 'http://localhost:8000/idp'
+
+SAML_IDP_CONFIG = {
+    'debug' : DEBUG,
+    'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
+    'entityid': '%s/metadata' % BASE_URL,
+    'description': 'Example IdP setup',
+
+    'service': {
+        'idp': {
+            'name': 'Django localhost IdP',
+            'endpoints': {
+                'single_sign_on_service': [
+                    ('%s/sso/post' % BASE_URL, BINDING_HTTP_POST),
+                    ('%s/sso/redirect' % BASE_URL, BINDING_HTTP_REDIRECT),
+                ],
+            },
+            'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
+            'sign_response': True,
+            'sign_assertion': True,
+        },
+    },
+
+    'metadata': {
+        'local': [os.path.join(os.path.join(os.path.join(BASE_DIR, 'djangosaml2idp'), 'saml2_config'), 'sp.xml')],
+    },
+    # Signing
+    'key_file': BASE_DIR + '/certificates/private.key',
+    'cert_file': BASE_DIR + '/certificates/public.cert',
+    # Encryption
+    'encryption_keypairs': [{
+        'key_file': BASE_DIR + '/certificates/private.key',
+        'cert_file': BASE_DIR + '/certificates/public.cert',
+    }],
+    'valid_for': 365 * 24,
+}
+
+SAML_IDP_SPCONFIG = {
+        'http://localhost:8087/sp.xml': {
+            'processor': 'djangosaml2idp.processors.BaseProcessor',
+            'attribute_mapping': {
+                # DJANGO: SAML
+                'email': 'email',
+                'first_name': 'first_name',
+                'last_name': 'last_name',
+                'is_staff': 'is_staff',
+                'is_superuser':  'is_superuser',
+            }
+        }
+    }

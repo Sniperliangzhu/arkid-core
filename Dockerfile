@@ -4,6 +4,7 @@ WORKDIR /var/oneid
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         vim supervisor gettext
+RUN apt-get install -y xmlsec1
 ADD devops/pip.conf /etc/pip.conf
 ADD requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
@@ -28,3 +29,4 @@ RUN \
     python manage.py compilemessages && \
     sed -i "s|LANGUAGE_CODE = 'zh-hans'|LANGUAGE_CODE = 'zh_hans'|g" oneid/settings.py
 CMD python manage.py migrate && supervisord
+

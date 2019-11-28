@@ -14,10 +14,14 @@ Including another URLconf
     2. Import the include() function: from django.conf.urls import url, include
     3. Add a URL to urlpatterns:  url(r'^blog/', include(blog_urls))
 """
+from django.conf.urls.static import static
+from django.conf import settings
 from django.conf.urls import url, include
 from django.contrib import admin
 from django.http import HttpResponse
 from rest_framework.documentation import include_docs_urls
+# from django.contrib.auth import views as auth_views
+from djangosaml2idp.djangologinview import LoginView
 
 urlpatterns = [    # pylint: disable=invalid-name
     url(r'^superadmin/', admin.site.urls),
@@ -27,4 +31,6 @@ urlpatterns = [    # pylint: disable=invalid-name
     url(r'^siteapi/oneid/', include(('siteapi.v1.urls', 'siteapi'), namespace='siteapi_oneid')),
     url(r'^oauth/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     url(r'^service/', include(('infrastructure.urls', 'infrastructure'), namespace='infra')),
-]
+    url(r'^idp/', include('djangosaml2idp.urls', namespace='djangosaml2idp')),
+    url(r'^samllogin/', LoginView.as_view(template_name='login.html'), name='samllogin')
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -272,10 +272,21 @@ class OIDCAPP():
         abstract = True
 
 
-class SAMLAPP():
+class SAMLAPP(BaseModel):
     '''
     SMAL client
-    TODO
     '''
+    app = models.OneToOneField('oneid_meta.APP',
+                               related_name="saml_app",
+                               null=True,
+                               blank=True,
+                               on_delete=models.CASCADE)
+    metadata = models.CharField(max_length=255, blank=True, verbose_name='SP方metadata uri')
+    acs = models.CharField(max_length=255, blank=True, verbose_name='SP方acs地址')
+    sls = models.CharField(max_length=255, blank=True, verbose_name='SP方sls地址')
+
+    def delete(self, *args, **kwargs):
+        super().kill()
+
     class Meta:    # pylint: disable=missing-docstring
         abstract = True
